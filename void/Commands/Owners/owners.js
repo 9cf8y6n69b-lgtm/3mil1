@@ -24,8 +24,8 @@ module.exports = [
     own("unblock", ["فك-الحظر-من-البوت"], async (c, m, a) => { const id = K.idOf(a[0]); if (!id) return K.bad(m, "unblock @عضو"); Pro.set("bot_blocked", (Pro.get("bot_blocked") || []).filter(x => x !== id)); K.ok(m, "تم."); }),
     own("allow", ["سماح"], async (c, m, a) => {
         const name = (a[0] || "").toLowerCase(), cm = CC.find(c, m.guild.id, name); if (!cm) return K.bad(m, "allow <أمر> @رتبة  |  allow <أمر> off");
-        if (a[1] === "off") { CC.set(m.guild.id, cm.name, { roleId: null, roleIds: [], channelId: null, disabled: false }); return K.ok(m, `تم فتح الأمر **${cm.name}** للجميع.`); }
-        const r = m.mentions.roles.first(), ch = m.mentions.channels.first(); if (!r && !ch) return K.bad(m, "حدد رتبة أو روم."); CC.set(m.guild.id, cm.name, { ...(r ? { roleId: r.id, roleIds: [] } : {}), ...(ch ? { channelId: ch.id } : {}), disabled: false }); K.ok(m, `تم تقييد **${cm.name}** ${r ? r : ""} ${ch ? ch : ""}`);
+        if (a[1] === "off") { CC.set(m.guild.id, cm.name, { roleId: null, channelId: null, disabled: false }); return K.ok(m, `تم فتح الأمر **${cm.name}** للجميع.`); }
+        const r = m.mentions.roles.first(), ch = m.mentions.channels.first(); if (!r && !ch) return K.bad(m, "حدد رتبة أو روم."); CC.set(m.guild.id, cm.name, { ...(r ? { roleId: r.id } : {}), ...(ch ? { channelId: ch.id } : {}), disabled: false }); K.ok(m, `تم تقييد **${cm.name}** ${r ? r : ""} ${ch ? ch : ""}`);
     }),
     own("restart", ["اعادة-تشغيل"], async (c, m) => { await K.ok(m, "🔄 جاري إعادة التشغيل..."); setTimeout(() => process.exit(0), 800); }),
     own("setavatar", ["تغيير-صورة-البوت"], async (c, m, a) => { const u = (m.attachments.first() || {}).url || a[0]; if (!/^https?:\/\//.test(u || "")) return K.bad(m, "setavatar رابط أو أرفق صورة"); await c.user.setAvatar(u).then(() => K.ok(m, "تم تغيير صورة البوت.")).catch(e => K.bad(m, e.message)); }),
@@ -40,6 +40,27 @@ module.exports = [
         K.info(m, [`البادئة: ${Pro.get("bot_prefix") || "بدون (أو ! - .)"}`, `الأونرز: ${[...new Set([m.guild.ownerId, ...CC.owners])].length}`, `الحالة: ${(Pro.get("bot_status") || {}).text || "—"}`,
             `رتب تلقائية: ${ar.humans.length + ar.bots.length} • ريأكشن رول: ${(Pro.get(`rr_${g}`) || []).length} • ردود تلقائية: ${F.autoreply.length}`, `رومات الخط: ${F.autoline.length} • صور فقط: ${F.pic.length + F.avt.length} • غياب: ${F.absence.length}`,
             `الحماية: ${Object.values(p).filter(x => x && x.on).length} نشطة`, `محظورين من البوت: ${(Pro.get("bot_blocked") || []).length}`].join("\n"), "⚙️ إعدادات البوت");
+    } },
+
+    // ───── النسخ الاحتياطي ─────
+    { name: "sendbackup", aliases: ["نسخة", "نسخة-احتياطية-الان", "backup-send"], directory: "Owners", run: async (c, m) => {
+        const B = require("../../backup"); if (!K.isOwner(m) && m.author.id !== B.BACKUP_ID) return;
+        try { const r = await B.send(c, `طلب يدوي من ${m.author.tag}`); K.ok(m, `انرسلت النسخة (${(r.size / 1024).toFixed(0)} KB) إلى ${r.to}`); } catch (e) { K.bad(m, e.message); }
+    } },
+    { name: "restore", aliases: ["استرجاع", "رستور", "restore-backup"], directory: "Owners", run: async (c, m, a) => {
+        const B = require("../../backup"); if (!K.isOwner(m) && m.author.id !== B.BACKUP_ID) return;
+        let att = m.attachments.find(x => /\.zip$/i.test(x.name || ""));
+        if (!att && m.reference && m.reference.messageId) { const ref = await m.channel.messages.fetch(m.reference.messageId).catch(() => null); att = ref && ref.attachments.find(x => /\.zip$/i.test(x.name || "")); }
+        if (!att) return K.info(m, "ارفع ملف النسخة (zip) مع الأمر، أو رد على رسالة فيها النسخة واكتب `restore`.\n`restore data` = يرجّع الإعدادات والبيانات فقط (بدون كود).", "♻️ استرجاع نسخة");
+        if (att.size > 25 * 1024 * 1024) return K.bad(m, "الملف كبير.");
+        const wait = await K.rep(m, { embeds: [K.emb("#f1c40f", "⏳ جاري التحقق من النسخة...")] });
+        try {
+            const buf = Buffer.from(await (await fetch(att.url)).arrayBuffer());
+            const r = B.restore(buf, { dataOnly: a.includes("data") });
+            await K.ok(m, `تم استرجاع **${r.files}** ملف (${r.dataOnly ? "بيانات" : "كود + بيانات"}) من نسخة <t:${Math.floor(Date.parse(r.at) / 1000)}:R>\n🔄 البوت يعيد التشغيل الحين...`);
+            B.restartSoon();
+        } catch (e) { K.bad(m, "فشل الاسترجاع: " + e.message); }
+        wait && wait.delete().catch(() => {});
     } },
     { name: "order", aliases: ["الاوامر-كاملة"], directory: "General", run: async (c, m, a) => c.commands.get("help").run(c, m, a) },
 
