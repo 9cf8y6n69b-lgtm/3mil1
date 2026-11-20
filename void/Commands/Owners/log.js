@@ -53,10 +53,19 @@ module.exports = {
         { name: "reset", description: "حذف كل إعدادات اللوقات", type: "SUB_COMMAND" },
     ],
 
-    run: async (client, interaction) => {
+    run: async (client, interaction, args = []) => {
         // لو انكتب بالبريفكس (مو سلاش)
         if (!interaction.options || typeof interaction.options.getSubcommand !== "function") {
             if (!interaction.member.permissions.has("ADMINISTRATOR")) return interaction.react("❌").catch(() => {});
+            const LPx = require("../../utils/logPanel"), TYPES = require("../../Extras/logTypes"), sub = String(args[0] || "").toLowerCase(), gid = interaction.guild.id;
+            const ch = interaction.mentions.channels.first() || (sub === "all" || sub === "set" ? interaction.channel : null);
+            const keys = args.slice(1).map(x => x.toLowerCase()).filter(x => TYPES.some(t => t.key === x));
+            const say = t => interaction.reply({ content: t, allowedMentions: { repliedUser: false } }).catch(() => {});
+            if (sub === "all" && ch) { LPx.setAll(gid, ch.id); return say(`✅ كل اللوقات في ${ch}`); }
+            if (sub === "set" && ch && keys.length) { keys.forEach(k => LPx.setRoom(gid, k, ch.id)); return say(`✅ ${keys.join("، ")} ← ${ch}`); }
+            if (sub === "disable") { if (keys.length) keys.forEach(k => LPx.setRoom(gid, k, null)); else { const c = LPx.getCfg(gid); c.types = {}; LPx.saveCfg(gid, c); } return say("✅ تم إيقاف اللوقات."); }
+            if (sub === "prison-role") { const r = interaction.mentions.roles.first(); if (!r) return say("log prison-role @رتبة"); const c = LPx.getCfg(gid); c.prisonRole = r.id; LPx.saveCfg(gid, c); return say(`✅ رتبة السجن: ${r}`); }
+            if (sub === "reset") { const c = LPx.getCfg(gid); c.types = {}; c.prisonRole = null; LPx.saveCfg(gid, c); return say("✅ تم حذف كل إعدادات اللوقات."); }
             return interaction.reply({ ...require("../../utils/logPanel").home(interaction.guild), allowedMentions: { repliedUser: false } }).catch(() => {});
         }
         if (!interaction.member.permissions.has("ADMINISTRATOR")) {
