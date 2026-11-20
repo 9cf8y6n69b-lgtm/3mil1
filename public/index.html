@@ -6,6 +6,10 @@
 <title>لوحة التحكم</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
+/* اتجاه الداشبورد: عربي من اليمين لليسار (القائمة والنصوص والحقول على اليمين) */
+html{direction:rtl}body{text-align:right}
+input,textarea,select{text-align:start}
+input[dir=ltr],textarea[dir=ltr]{direction:ltr;text-align:left}
 :root{--bg:#000;--s1:#0b0b0b;--s2:#131313;--s3:#1a1a1a;--line:#1f1f1f;--tx:#f0f0f0;--mu:#808080;--r:16px}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
 *:focus{outline:none}
@@ -235,27 +239,6 @@ main{padding:20px}.two{grid-template-columns:1fr}}
   </div><div class="card"><h3><svg class="i"><use href="#i-act"/></svg>التقدم</h3><div class="bar"><div id="b_bar"></div></div><div id="b_txt" class="sub">لا يوجد برودكاست شغال</div></div></div>
 </section>
 
-<section id="tickets"><div class="head"><div class="tile"><svg class="i"><use href="#i-ticket"/></svg></div><div><h1>التذاكر</h1><div class="sub">أزرار أو قايمة، بإيموجيات السيرفر</div></div></div>
-  <div class="two"><div class="card"><h3><svg class="i"><use href="#i-panel"/></svg>أنواع التذاكر</h3>
-    <div class="seg" data-seg="tk"><button data-m="buttons" class="on"><svg class="i"><use href="#i-panel"/></svg>أزرار</button><button data-m="menu"><svg class="i"><use href="#i-logs"/></svg>قايمة</button></div>
-    <div id="t_types"></div>
-    <button class="btn" id="t_add" style="margin:6px 0 16px;background:var(--s3);color:#fff"><svg class="i"><use href="#i-plus"/></svg>إضافة نوع</button>
-    <div class="sub" style="margin-bottom:6px">معاينة</div><div class="dc"><div class="bot"><svg class="i"><use href="#i-bot"/></svg></div><div class="body"><div class="pv v2" id="t_pv"></div></div></div>
-  </div><div class="card"><h3><svg class="i"><use href="#i-save"/></svg>الإعدادات</h3>
-    <label class="f"><span>كاتيجوري التذاكر</span><select id="t_cat"></select></label>
-    <label class="f"><span>رتبة الدعم</span><select id="t_role"></select></label>
-    <label class="f"><span>روم الترانسكربت</span><select id="t_log"></select></label>
-    <div class="row" style="padding-top:0"><div class="tile"><svg class="i"><use href="#i-mail"/></svg></div><div>إرسال الترانسكربت لصاحب التذكرة<small>في الخاص عند الإغلاق</small></div><label class="sw"><input type="checkbox" id="t_dm"><i></i></label></div>
-    <label class="f"><span>رسالة الترحيب</span><textarea id="t_welcome"></textarea></label>
-    <button class="btn" id="t_save"><svg class="i"><use href="#i-save"/></svg>حفظ</button>
-  </div></div>
-  <div class="card"><h3><svg class="i"><use href="#i-send"/></svg>إرسال البانل</h3>
-    <div class="two"><label class="f"><span>روم البانل</span><select id="pn_ch"></select></label><label class="f"><span>عنوان البانل</span><input type="text" id="pn_title" value="الدعم الفني"></label></div>
-    <label class="f"><span>وصف البانل</span><textarea id="pn_desc">محتاج مساعدة؟ اختار نوع التذكرة من تحت.</textarea></label>
-    <button class="btn" id="pn_go"><svg class="i"><use href="#i-send"/></svg>إرسال البانل</button>
-  </div>
-</section>
-
 <section id="music"><div class="head"><div class="tile"><svg class="i"><use href="#i-music"/></svg></div><div><h1>الأغاني</h1><div class="sub">تشغيل مباشر من SoundCloud</div></div><span class="pill" id="m_node" style="margin-right:auto"></span></div>
   <div class="card hero" id="m_card"><div class="np"><div class="art" id="m_art"><svg class="i"><use href="#i-music"/></svg></div><div class="info">
     <h2 id="m_title">مفيش حاجة شغالة</h2><div class="sub" id="m_auth"></div>
@@ -272,12 +255,6 @@ main{padding:20px}.two{grid-template-columns:1fr}}
     <div class="sub" style="margin-bottom:10px">لو مفيش صوت: اختار روم، دوس <b>اختبار الصوت</b>. لو سمعت النغمة يبقى المشكلة في SoundCloud، ولو ماسمعتش شوف العلامات الحمرا تحت.</div>
     <button class="btn" id="m_test" style="background:var(--s3);color:#fff"><svg class="i"><use href="#i-vol"/></svg>اختبار الصوت</button>
     <div id="m_diag" style="margin-top:10px"></div><div class="logs" id="m_logs">—</div></div>
-</section>
-
-<section id="logs"><div class="head"><div class="tile"><svg class="i"><use href="#i-logs"/></svg></div><div><h1>اللوج</h1><div class="sub">سجل أحداث السيرفر</div></div></div>
-  <div class="two"><div class="card"><label class="f"><span>روم اللوج</span><select id="l_ch"></select></label><div id="l_list"></div>
-    <button class="btn" id="l_save" style="margin-top:14px"><svg class="i"><use href="#i-save"/></svg>حفظ</button></div>
-  <div class="card"><h3><svg class="i"><use href="#i-act"/></svg>آخر الأحداث</h3><div class="feed" id="l_feed"><div class="empty">لسه مفيش أحداث</div></div></div></div>
 </section>
 
 <section id="welcome"><div class="head"><div class="tile"><svg class="i"><use href="#i-heart"/></svg></div><div><h1>الترحيب</h1><div class="sub">رسالة وبنر لكل عضو جديد</div></div></div>
@@ -330,15 +307,6 @@ main{padding:20px}.two{grid-template-columns:1fr}}
   <button class="btn" id="p_save"><svg class="i"><use href="#i-save"/></svg>حفظ</button>
 </section>
 
-<section id="admin"><div class="head"><div class="tile"><svg class="i"><use href="#i-term"/></svg></div><div><h1>الإدارة والأوامر</h1><div class="sub">رتبة الإدارة وأوامر السلاش</div></div></div>
-  <div class="card"><h3><svg class="i"><use href="#i-key"/></svg>رتبة الإدارة</h3>
-    <div class="sub" style="margin-bottom:14px">صاحب الرتبة يستخدم أوامر الإدارة، ويتخطى الحماية، ويشوف ويقفل أي تذكرة.</div>
-    <label class="f"><span>الرتبة</span><select id="a_role"></select></label>
-    <button class="btn" id="a_save"><svg class="i"><use href="#i-save"/></svg>حفظ</button></div>
-  <div class="card"><h3><svg class="i"><use href="#i-smile"/></svg>إيموجيات البوت</h3>
-    <div class="sub" style="margin-bottom:12px">أيقونات كاستم بيرفعها البوت على نفسه أول ما يشتغل، وبتظهر في أزرار الأغاني والتقييم. وبتتعرض كمان من بورت الداشبورد.</div><div class="chips" id="emo_list"></div></div>
-  <div class="cmds" id="cmds"></div>
-</section>
 </main>
 <div id="toast"></div>
 
@@ -349,20 +317,16 @@ async function api(p,b){const r=await fetch('/api/'+p,b?{method:'POST',headers:{
 let tt;function toast(m,bad){const t=$('#toast');t.innerHTML=ic(bad?'x':'check')+'<span></span>';t.lastChild.textContent=m;t.className='show'+(bad?' bad':'');clearTimeout(tt);tt=setTimeout(()=>t.className='',2600)}
 async function run(btn,fn,ok){btn.disabled=true;try{await fn();if(ok)toast(ok)}catch(e){toast(e.message,true)}btn.disabled=false}
 
-const tabs=[['overview','نظرة عامة','home'],['send','إرسال رسالة','send'],['broadcast','برودكاست','mega'],['tickets','التذاكر','ticket'],['music','الأغاني','music'],['logs','اللوج','logs'],['welcome','الترحيب','heart'],['feedback','التقييم','star'],['suggest','الاقتراحات','bulb'],['protect','الحماية','shield'],['admin','الإدارة والأوامر','term']];
+const tabs=[['overview','نظرة عامة','home'],['send','إرسال رسالة','send'],['broadcast','برودكاست','mega'],['music','الأغاني','music'],['welcome','الترحيب','heart'],['feedback','التقييم','star'],['suggest','الاقتراحات','bulb'],['protect','الحماية','shield']];
 tabs.forEach(([id,n,i],k)=>{const b=document.createElement('button');b.innerHTML=ic(i)+'<span>'+n+'</span>';b.dataset.t=id;b.style.animationDelay=k*70+'ms';b.onclick=()=>show(id);$('#nav').append(b)});
 let mt,lt;
-function show(id){$$('section').forEach(s=>s.classList.toggle('on',s.id===id));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));clearTimeout(mt);clearTimeout(lt);if(id==='music')mpoll();if(id==='logs')lpoll();closePick();if(id==='welcome'||id==='feedback')imgs();if(id==='suggest')sgload();setMenu(false);$('#tt').textContent=(tabs.find(t=>t[0]===id)||[])[1]||'';location.hash=id}
+function show(id){$$('section').forEach(s=>s.classList.toggle('on',s.id===id));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));clearTimeout(mt);clearTimeout(lt);if(id==='music')mpoll();closePick();if(id==='welcome'||id==='feedback')imgs();if(id==='suggest')sgload();setMenu(false);$('#tt').textContent=(tabs.find(t=>t[0]===id)||[])[1]||'';location.hash=id}
 function setMenu(o){document.body.classList.toggle('menu',o);$('#bg_btn').setAttribute('aria-expanded',o)}
 $('#bg_btn').onclick=()=>setMenu(!document.body.classList.contains('menu'));$('#bg').onclick=()=>setMenu(false);document.addEventListener('keydown',e=>{if(e.key==='Escape')setMenu(false)});
 
-const cmdList=[['/ping','سرعة البوت','act'],['/avatar','صورة عضو','img'],['/userinfo','معلومات عضو','user'],['/serverinfo','معلومات السيرفر','info'],['/ban','حظر عضو','ban'],['/kick','طرد عضو','x'],['/timeout','إسكات عضو','clock'],['/warn','تحذير عضو','alert'],['/clear','مسح رسائل','trash'],['/lock · /unlock','قفل وفتح الروم','lock'],['/slowmode','سلو مود','clock'],['/say','البوت يكتب رسالة','msg'],['/ticketpanel','بانل التذاكر','ticket'],['/transcript','ترانسكربت الروم','file'],['/broadcast','برودكاست للخاص','mega'],['/play','تشغيل أغنية','play'],['/skip · /stop','تخطي وإيقاف','skip'],['/pause · /loop','إيقاف مؤقت وتكرار','pause'],['/queue · /nowplaying','القايمة والحالية','music'],['/volume','مستوى الصوت','vol'],['/testsound','اختبار الصوت','vol']];
-$('#cmds').innerHTML=cmdList.map(c=>`<div class="cmd"><div class="tile">${ic(c[2])}</div><div><code>${c[0]}</code><span>${c[1]}</span></div></div>`).join('');
 
 const prot=[['invites','منع روابط الدعوات','يحذف أي رابط سيرفر ديسكورد','mail'],['links','منع الروابط','يحذف أي رابط','link'],['spam','منع السبام','إسكات دقيقة عند التكرار السريع','zap'],['badwords','الكلمات الممنوعة','حسب القائمة تحت','ban'],['raid','حماية الريد','طرد الداخلين عند الدخول الجماعي','alert']];
 $('#p_list').innerHTML=prot.map(p=>`<div class="row"><div class="tile">${ic(p[3])}</div><div>${p[1]}<small>${p[2]}</small></div><label class="sw"><input type="checkbox" id="p_${p[0]}"><i></i></label></div>`).join('');
-const evs=[['msgDelete','رسالة اتمسحت','trash'],['msgEdit','رسالة اتعدلت','msg'],['join','دخول أعضاء','users'],['leave','خروج أعضاء','user'],['ban','حظر وفك حظر','ban'],['roles','الرتب','tag'],['channels','الرومات','hash'],['member','تغيير رتب وأسماء الأعضاء','key'],['voice','الرومات الصوتية','vol']];
-$('#l_list').innerHTML=evs.map(p=>`<div class="row"><div class="tile">${ic(p[2])}</div><div>${p[1]}</div><label class="sw"><input type="checkbox" id="l_${p[0]}"><i></i></label></div>`).join('');
 
 let EM=[];const UNI='🎫 🆘 ❓ 💬 📩 🛠️ 🐞 ⚠️ 🔒 💡 📌 🎮 💰 ✅ ❌ 🔥 ⭐ 🎁 📢 👋 🛡️ 🤝 😀 😎 ❤️ 🎵 📝 🔔 👑'.split(' ');
 const EMR=/<(a?):(\w+):(\d+)>/g;
@@ -388,45 +352,18 @@ $('#s_emo').onclick=e=>pick(e.currentTarget,v=>insertAt($('#s_desc'),v));
 function opts(sel,list,empty){const el=$(sel);el.replaceChildren();if(empty){const o=document.createElement('option');o.value='';o.textContent=empty;el.append(o)}list.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.name;el.append(o)})}
 function count(el,to){const t0=performance.now();(function f(t){const p=Math.min((t-t0)/700,1);el.textContent=Math.round(to*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)})(t0)}
 
-let types=[];const mode={s:'embed',b:'embed',tk:'buttons'};
-function renderTypes(){
-  const box=$('#t_types');box.replaceChildren();
-  types.forEach((t,k)=>{
-    const r=document.createElement('div');r.className='trow';
-    const eb=document.createElement('button');eb.type='button';eb.className='emo';eb.dataset.pick=1;eb.innerHTML=emoHtml(t.emoji)||ic('smile');eb.onclick=()=>pick(eb,v=>{t.emoji=v;renderTypes()},true);
-    const l=document.createElement('input');l.type='text';l.placeholder='اسم '+(mode.tk==='menu'?'الخيار':'الزر');l.value=t.label;l.oninput=()=>{t.label=l.value;tpv()};
-    const d=document.createElement('input');d.type='text';d.placeholder='وصف (للقايمة)';d.value=t.desc||'';d.oninput=()=>t.desc=d.value;d.style.display=mode.tk==='menu'?'':'none';
-    if(mode.tk!=='menu')r.style.gridTemplateColumns='46px 1fr 44px';
-    const x=document.createElement('button');x.type='button';x.className='ib';x.innerHTML=ic('trash');x.onclick=()=>{types.splice(k,1);renderTypes()};
-    r.append(eb,l,d,x);box.append(r)});
-  $('#t_add').style.display=types.length>=25?'none':'';tpv();
-}
-function tpv(){
-  const pv=$('#t_pv');pv.replaceChildren();pv.style.borderRightColor='#fff';
-  const h=document.createElement('h4');h.textContent=$('#pn_title').value||'الدعم الفني';const d=document.createElement('div');rich(d,$('#pn_desc').value);pv.append(h,d);
-  const list=types.filter(t=>t.label);const w=document.createElement('div');
-  if(mode.tk==='menu'){w.className='fake';w.style.marginTop='12px';w.innerHTML='<span>اختار نوع التذكرة</span>'+ic('hash')}
-  else{w.className='chips';(list.length?list:[{label:'فتح تذكرة'}]).forEach(t=>{const c=document.createElement('span');c.className='chip';c.innerHTML=emoHtml(t.emoji);c.append(t.label);w.append(c)})}
-  pv.append(w);
-}
-$('#t_add').onclick=()=>{types.push({id:Date.now().toString(36),label:'',emoji:'',desc:''});renderTypes()};
-['pn_title','pn_desc'].forEach(i=>$('#'+i).oninput=tpv);
+const mode={s:'embed',b:'embed'};
 
 async function load(){
   try{
     const s=await api('state');
     $('#gn').textContent=s.guild.name;if(s.guild.icon){const im=document.createElement('img');im.src=s.guild.icon;$('#ic').replaceChildren(im)}
     $$('[data-k]').forEach(e=>count(e,s.guild[e.dataset.k]));EM=s.emojis||[];
-    opts('#s_ch',s.text);opts('#pn_ch',s.text);opts('#m_vc',s.voice);opts('#l_ch',s.text,'بدون');opts('#t_log',s.text,'بدون');
-    opts('#b_role',s.roles,'كل الأعضاء');opts('#t_role',s.roles,'بدون');opts('#a_role',s.roles,'بدون');opts('#t_cat',s.cats,'بدون');
-    const p=s.db.protection,t=s.db.tickets,L=s.db.logs;
+    opts('#s_ch',s.text);opts('#m_vc',s.voice);
+    opts('#b_role',s.roles,'كل الأعضاء');
+    const p=s.db.protection;
     prot.forEach(x=>$('#p_'+x[0]).checked=p[x[0]]);
     $('#p_spamLimit').value=p.spamLimit;$('#p_raidLimit').value=p.raidLimit;$('#p_words').value=p.words.join('\n');
-    $('#t_cat').value=t.category;$('#t_role').value=t.role;$('#t_log').value=t.logChannel||'';$('#t_dm').checked=t.dm!==false;$('#t_welcome').value=t.welcome;
-    $('#a_role').value=s.db.admin.role||'';$('#l_ch').value=L.channel||'';evs.forEach(x=>$('#l_'+x[0]).checked=!!L.events[x[0]]);
-    mode.tk=t.style||'buttons';$$('[data-seg="tk"] button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode.tk));
-    types=(t.types||[]).map(x=>({...x}));renderTypes();
-    api('emojis').then(l=>{const b=$('#emo_list');b.replaceChildren();l.forEach(e=>{const c=document.createElement('span');c.className='chip';const im=document.createElement('img');im.src='/emoji/'+e.name+'.png';c.append(im,e.name+(e.uploaded?' ✓':' …'));b.append(c)})}).catch(()=>{});
     opts('#w_ch',s.text,'بدون');opts('#w_role',s.roles,'بدون');opts('#f_ch',s.text,'بدون');opts('#f_out',s.text,'نفس الروم');opts('#g_ch',s.text,'بدون');opts('#g_out',s.text,'نفس الروم');
     const W=s.db.welcome,Fb=s.db.feedback;
     $('#w_on').checked=W.enabled;$('#w_banner').checked=W.banner;$('#w_ch').value=W.channel;$('#w_role').value=W.role;$('#w_title').value=W.title;$('#w_line').value=W.line;$('#w_text').value=W.text;
@@ -436,7 +373,7 @@ async function load(){
 }
 
 function vis(g){const m=mode[g];$$(g==='s'?'[data-show]:not([data-for])':'[data-for="b"]').forEach(e=>e.style.display=e.dataset.show.split(' ').includes(m)?'':'none')}
-$$('[data-seg]').forEach(g=>g.onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=g.dataset.seg;mode[k]=b.dataset.m;[...g.children].forEach(x=>x.classList.toggle('on',x===b));if(k==='tk')renderTypes();else{vis(k);prev()}});
+$$('[data-seg]').forEach(g=>g.onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=g.dataset.seg;mode[k]=b.dataset.m;[...g.children].forEach(x=>x.classList.toggle('on',x===b));{vis(k);prev()}});
 function prev(){
   const m=mode.s,pv=$('#s_pv'),T=m!=='text';
   pv.className='pv'+(m==='text'?' txt':m==='v2'?' v2':'');pv.style.borderRightColor=$('#s_color').value;pv.replaceChildren();
@@ -452,11 +389,7 @@ function prev(){
 
 $('#s_go').onclick=e=>run(e.target,()=>api('send',{channel:$('#s_ch').value,mode:mode.s,title:$('#s_title').value,desc:$('#s_desc').value,color:$('#s_color').value,footer:$('#s_footer').value,image:$('#s_image').value,btnLabel:$('#s_bl').value,btnUrl:$('#s_bu').value}),'تم الإرسال');
 $('#b_go').onclick=e=>run(e.target,async()=>{await api('broadcast',{role:$('#b_role').value,mode:mode.b,title:$('#b_title').value,desc:$('#b_desc').value});poll()},'بدأ البرودكاست');
-$('#t_save').onclick=e=>run(e.target,()=>api('config',{section:'tickets',data:{category:$('#t_cat').value,role:$('#t_role').value,logChannel:$('#t_log').value,dm:$('#t_dm').checked,welcome:$('#t_welcome').value,style:mode.tk,types:types.filter(x=>x.label.trim())}}),'تم الحفظ');
-$('#pn_go').onclick=e=>run(e.target,async()=>{await api('config',{section:'tickets',data:{style:mode.tk,types:types.filter(x=>x.label.trim())}});await api('panel',{channel:$('#pn_ch').value,title:$('#pn_title').value,desc:$('#pn_desc').value})},'تم إرسال البانل');
 $('#p_save').onclick=e=>run(e.target,()=>{const d={spamLimit:+$('#p_spamLimit').value||5,raidLimit:+$('#p_raidLimit').value||6,words:$('#p_words').value.split('\n').map(x=>x.trim()).filter(Boolean)};prot.forEach(x=>d[x[0]]=$('#p_'+x[0]).checked);return api('config',{section:'protection',data:d})},'تم الحفظ');
-$('#a_save').onclick=e=>run(e.target,()=>api('config',{section:'admin',data:{role:$('#a_role').value}}),'تم الحفظ');
-$('#l_save').onclick=e=>run(e.target,()=>{const ev={};evs.forEach(x=>ev[x[0]]=$('#l_'+x[0]).checked);return api('config',{section:'logs',data:{channel:$('#l_ch').value,events:ev}})},'تم الحفظ');
 
 const imgs=()=>{$('#w_img').src='/api/preview/welcome?'+Date.now();$('#f_img').src='/api/preview/feedback?'+Date.now()};
 $('#w_save').onclick=e=>run(e.target,async()=>{await api('config',{section:'welcome',data:{enabled:$('#w_on').checked,banner:$('#w_banner').checked,channel:$('#w_ch').value,role:$('#w_role').value,title:$('#w_title').value,line:$('#w_line').value,text:$('#w_text').value}});imgs()},'تم الحفظ');
@@ -496,14 +429,6 @@ function renderDiag(d){
 }
 $('#m_test').onclick=e=>run(e.target,()=>api('music/test',{voice:$('#m_vc').value}),'شغّلت نغمة 3 ثواني — سمعتها؟');
 async function mpoll(){clearTimeout(mt);try{renderMusic(await api('music'));renderDiag(await api('music/diag'))}catch{}mt=setTimeout(mpoll,2000)}
-
-async function lpoll(){
-  clearTimeout(lt);
-  try{const f=await api('logs'),box=$('#l_feed');box.replaceChildren();
-    if(!f.length)box.innerHTML='<div class="empty">لسه مفيش أحداث</div>';
-    f.slice(0,25).forEach(x=>{const it=document.createElement('div');it.className='it';const t=document.createElement('b');t.textContent=x.title;const s=document.createElement('small');s.textContent=new Date(x.at).toLocaleTimeString('ar-EG');const p=document.createElement('p');p.textContent=x.text.replace(/\*\*|\*/g,'');it.append(s,t,p);box.append(it)})}catch{}
-  lt=setTimeout(lpoll,5000);
-}
 
 vis('s');vis('b');prev();load();poll();show(tabs.some(t=>t[0]===location.hash.slice(1))?location.hash.slice(1):'overview');
 </script>

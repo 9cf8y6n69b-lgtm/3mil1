@@ -122,7 +122,9 @@ mkTab('vtickets', 'التكت المتقدم', 'طلب ← قبول/رفض ← �
         field('روم اللوحة', sel(chans(), c.panelChannelId, v => c.panelChannelId = v || null, 'غير محدد')),
         field('روم الطلبات (ريكوست)', sel(chans(), c.requestChannelId, v => c.requestChannelId = v || null, 'غير محدد')),
         field('كاتيغوري التكتات', sel(cats(), c.ticketCategoryId, v => c.ticketCategoryId = v || null, 'غير محدد')),
-        E('div', { class: 'sub', style: 'margin:8px 0 2px' }, 'رتب الدعم (تقبل/ترفض وتشوف التكتات)'), chipsPick(roles(), c.reviewerRoleIds || [], v => c.reviewerRoleIds = v)),
+        E('div', { class: 'sub', style: 'margin:8px 0 2px' }, 'رتب الدعم (تقبل/ترفض وتشوف التكتات)'), chipsPick(roles(), c.reviewerRoleIds || [], v => c.reviewerRoleIds = v),
+        E('div', { class: 'sub', style: 'margin:14px 0 2px' }, 'رتب التحويل (الرتب اللي يقدر التكت ينحول لها بزر تحويل)'), chipsPick(roles(), c.transferRoleIds || [], v => c.transferRoleIds = v),
+        E('div', { class: 'hint' }, 'لو ما اخترت أي رتبة، التحويل يستخدم رتب الأقسام.')),
       E('div', { class: 'card' }, E('h3', { html: ic('img') + 'الصور' }), imgCard('panel', 'صورة اللوحة'), imgCard('request', 'صورة الطلب'))),
     E('div', { class: 'card', style: 'margin-top:16px' }, E('h3', { html: ic('ticket') + 'الأقسام (حد أقصى 24)' }), catsBox,
       btn('إضافة قسم', 'plus', async () => { if (c.categories.length >= 24) throw new Error('وصلت الحد'); c.categories.push({ id: '', name: '', description: '', emoji: '', roleId: null }); drawCats(); }, ghost)),
@@ -135,7 +137,7 @@ mkTab('vtickets', 'التكت المتقدم', 'طلب ← قبول/رفض ← �
 });
 
 // ── اللوقات
-mkTab('vlogs', 'لوقات Void', 'لكل نوع لوق روم خاص (دخول/خروج/حذف/صوت/أوامر...) بكروت صور', 'logs', async function load() {
+mkTab('vlogs', 'لوقات', 'لكل نوع لوق روم خاص (دخول/خروج/حذف/صوت/أوامر...) — الصور فقط للوقات الفويس', 'logs', async function load() {
   const body = $('#vlogs .body'); await state(); const r = await api('v/logs');
   const all = sel(chans(), '', () => {}, 'اختار روم'); const list = E('div', { class: 'card', style: 'margin-top:16px' });
   r.types.forEach(t => list.append(E('div', { class: 'lg' }, E('div', {}, `${t.emoji} ${t.label}`), sel(chans(), r.map[t.key], async v => { try { await post('v/logs', { key: t.key, channelId: v || null }); toast('تم'); } catch (e) { toast(e.message, true); } }, '— غير مفعل —'))));
@@ -162,15 +164,15 @@ mkTab('vfilters', 'الفلاتر', 'كلمات ممنوعة، سبام، دعو
 });
 
 // ── الأوامر والاختصارات
-mkTab('vcmds', 'أوامر Void', 'تعطيل أي أمر، اختصارات، تحديد رتبة أو روم', 'term', async function load() {
+mkTab('vcmds', 'الأوامر', 'كل الأوامر: تعطيل، اختصارات، تحديد الرتب اللي تستخدمها أو الروم', 'term', async function load() {
   const body = $('#vcmds .body'); await state(); const r = await api('v/commands');
   const q = E('input', { type: 'text', placeholder: 'ابحث عن أمر...' }); const list = E('div');
   const draw = () => { list.replaceChildren(); r.commands.filter(c => !q.value || (c.name + c.desc + c.aliases.join(' ')).toLowerCase().includes(q.value.toLowerCase())).forEach(c => {
-    const cfg = c.cfg, al = E('input', { type: 'text', placeholder: 'اختصارات مفصولة بفاصلة' }); al.value = (cfg.aliases || []).join(', ');
+    const cfg = c.cfg; if (!(cfg.roleIds && cfg.roleIds.length) && cfg.roleId) cfg.roleIds = [cfg.roleId]; const al = E('input', { type: 'text', placeholder: 'اختصارات مفصولة بفاصلة' }); al.value = (cfg.aliases || []).join(', ');
     const d = E('details', { class: 'cmdbox' }, E('summary', {}, E('code', {}, c.name), E('span', { class: 'tag' }, c.dir), cfg.disabled ? E('span', { class: 'tag' }, 'معطّل') : '', E('span', { class: 'sub' }, c.desc)),
       E('div', {}, row('x', 'تعطيل الأمر', '', toggle(cfg.disabled, v => cfg.disabled = v)), E('div', { class: 'sub' }, 'اختصارات مدمجة: ' + (c.aliases.join('، ') || '—')), field('اختصارات إضافية', al),
-        field('رتبة مطلوبة', sel(roles(), cfg.roleId, v => cfg.roleId = v || null, 'للجميع')), field('روم محدد', sel(chans(), cfg.channelId, v => cfg.channelId = v || null, 'أي روم')),
-        btn('حفظ', 'save', async () => { await post('v/command', { name: c.name, disabled: cfg.disabled, aliases: al.value.split(/[,،]/).map(x => x.trim()).filter(Boolean), roleId: cfg.roleId, channelId: cfg.channelId }); toast('انحفظ'); })));
+        E('div', { class: 'sub', style: 'margin:8px 0 2px' }, 'الرتب اللي تستخدم الأمر (بدون اختيار = للجميع)'), chipsPick(roles(), (cfg.roleIds && cfg.roleIds.length) ? cfg.roleIds : (cfg.roleId ? [cfg.roleId] : []), v => cfg.roleIds = v), field('روم محدد', sel(chans(), cfg.channelId, v => cfg.channelId = v || null, 'أي روم')),
+        btn('حفظ', 'save', async () => { await post('v/command', { name: c.name, disabled: cfg.disabled, aliases: al.value.split(/[,،]/).map(x => x.trim()).filter(Boolean), roleIds: (cfg.roleIds && cfg.roleIds.length) ? cfg.roleIds : (cfg.roleId && !cfg.roleIds ? [cfg.roleId] : []), channelId: cfg.channelId }); toast('انحفظ'); })));
     list.append(d); }); };
   q.oninput = draw; draw();
   const w = E('input', { type: 'text', placeholder: 'الكلمة (مثال: ب)' }), full = E('input', { type: 'text', placeholder: 'الأمر الكامل (مثال: ban)' }), sc = E('div');
@@ -178,6 +180,17 @@ mkTab('vcmds', 'أوامر Void', 'تعطيل أي أمر، اختصارات، �
   body.replaceChildren(E('div', { class: 'card' }, E('h3', { html: ic('zap') + 'اختصارات كاملة' }), E('div', { class: 'two' }, field('الكلمة', w), field('الأمر', full)),
     btn('إضافة', 'plus', async () => { await post('v/shortcut', { word: w.value, full: full.value }); r.shortcuts[w.value.toLowerCase().trim()] = full.value; w.value = full.value = ''; drawSc(); toast('انضاف'); }), sc),
     E('div', { class: 'card', style: 'margin-top:16px' }, E('h3', { html: ic('term') + 'كل الأوامر (' + r.commands.length + ')' }), field('بحث', q), list));
+});
+
+// ── AFK: البوت يقعد في روم صوتي
+mkTab('vafk', 'AFK', 'البوت يدخل روم صوتي محدد ويفضل فيه، ويرجع له لو انطرد أو بعد الموسيقى', 'vol', async function load() {
+  const body = $('#vafk .body'); const s = await api('state'); const a = s.db.afk || { enabled: false, channel: '' };
+  const ch = sel(s.voice, a.channel, v => a.channel = v, 'اختار روم صوتي');
+  body.replaceChildren(E('div', { class: 'card' }, E('h3', { html: ic('vol') + 'روم الـ AFK' }),
+    row('vol', 'تفعيل الـ AFK', 'البوت يقعد في الروم (مكتوم وديفن) على طول', toggle(a.enabled, v => a.enabled = v)),
+    field('الروم الصوتي', ch),
+    E('div', { class: 'hint' }, 'لو شغّلت أغنية بروم ثاني البوت ينتقل لها، وبعد ما تخلص أو توقفها يرجع لروم الـ AFK.'),
+    btn('حفظ', 'save', async () => { if (a.enabled && !a.channel) throw new Error('اختار الروم الصوتي أول'); await post('config', { section: 'afk', data: { enabled: a.enabled, channel: a.channel } }); toast('انحفظ'); })));
 });
 
 // ── الخبرة
@@ -189,6 +202,34 @@ mkTab('vxp', 'الخبرة والمستويات', 'خبرة من الشات وا
       E('div', { style: 'display:flex;gap:10px;flex-wrap:wrap' }, btn('إضافة مكافأة', 'plus', async () => { c.rewards.push({ level: 5, roleId: '' }); draw(); }, ghost), btn('حفظ', 'save', async () => { await post('v/xp', { enabled: c.enabled !== false, levelChannelId: c.levelChannelId, rewards: c.rewards }); toast('انحفظ'); }))),
     E('div', { class: 'card' }, E('h3', { html: ic('user') + 'أعلى 10' }), ...(r.top.length ? r.top.map((t, i) => E('div', { class: 'row' }, E('div', {}, `${i + 1}. ${t.name}`, E('small', {}, `${t.xp} XP`)), E('span', { class: 'tag' }, 'لفل ' + t.level))) : [E('div', { class: 'sub' }, 'لسه ما فيه أحد')]))));
 });
+
+// ── أغاني الملفات (داخل صفحة الأغاني): رفع، تشغيل، حذف
+(() => {
+  const list = E('div'), fi = E('input', { type: 'file', accept: '.mp3,.wav,.ogg,.m4a,.flac,.opus,.aac,audio/*', multiple: true, style: 'display:none' });
+  const draw = async () => {
+    try {
+      const r = await api('songs');
+      list.replaceChildren(...(r.songs.length ? r.songs.map(s => {
+        const play = E('button', { class: 'ib', type: 'button', title: 'تشغيل', html: ic('music') }); play.onclick = () => dl(play, async () => { const x = await post('music/play', { voice: $('#m_vc').value, query: s.name }); toast('تمت الإضافة: ' + x.title); });
+        const del = E('button', { class: 'ib', type: 'button', title: 'حذف', html: ic('trash') }); del.onclick = () => dl(del, async () => { if (!confirm('تحذف "' + s.name + '"؟')) return; await post('songs/delete', { name: s.name }); draw(); });
+        return E('div', { class: 'row' }, E('div', { class: 'tile', html: ic('music') }), E('div', {}, s.name, E('small', {}, 'ملف محلي')), E('div', { style: 'display:flex;gap:6px' }, play, del));
+      }) : [E('div', { class: 'sub' }, 'ما فيه أغاني بعد — ارفع ملفات mp3 أو حطها في مجلد songs')]));
+    } catch {}
+  };
+  const upload = btn('رفع أغاني', 'plus', async () => {
+    fi.value = ''; fi.click();
+    await new Promise(ok => { fi.onchange = ok; });
+    for (const f of fi.files) {
+      if (f.size > 30 * 1024 * 1024) { toast(f.name + ': أكبر من 30MB', true); continue; }
+      const res = await fetch('/api/songs/upload?name=' + encodeURIComponent(f.name), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f });
+      if (!res.ok) { toast(f.name + ': ' + ((await res.json().catch(() => ({}))).error || 'فشل الرفع'), true); continue; }
+      toast('انرفعت: ' + f.name);
+    }
+    draw();
+  });
+  const card = E('div', { class: 'card', style: 'margin-top:16px' }, E('h3', { html: ic('music') + 'أغاني الملفات' }), E('div', { class: 'hint' }, 'الأغاني اللي ترفعها هنا تنحفظ في DATA_DIR/songs. التشغيل بالروم الصوتي المختار فوق. ولو تبي ملفات ثابتة حطها في مجلد songs على GitHub.'), upload, E('div', { style: 'margin-top:12px' }, list));
+  $('#music').append(card, fi); draw();
+})();
 
 // ───────────────────────── ربط ─────────────────────────
 const _show = show;
