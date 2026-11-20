@@ -21,6 +21,8 @@ function remove(g, word) {
 // يشيل البادئة ويفك الاختصار: "!ب @x سبام" -> "ban @x سبام"
 function normalize(guildId, text) {
     let t = String(text || "").trim().replace(PREFIX, "");
+    const cp = require("../prodb").get("bot_prefix");
+    if (cp && t.startsWith(cp)) t = t.slice(cp.length).trim();
     const [first, ...rest] = t.split(/\s+/);
     const hit = first && all(guildId)[first.toLowerCase()];
     if (hit) t = `${hit} ${rest.join(" ")}`.trim();

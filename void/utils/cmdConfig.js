@@ -2,9 +2,12 @@
 const Pro = require("../prodb");
 
 const owners = String(process.env.OWNER_IDS || "").split(/[,\s]+/).filter(Boolean);
+for (const id of Pro.get("bot_owners") || []) if (!owners.includes(id)) owners.push(id);
 const key = g => `cmdcfg_${g}`;
 const all = g => Pro.get(key(g)) || {};
-const DEF = { disabled: false, aliases: [], roleId: null, channelId: null };
+const DEF = { disabled: false, aliases: [], roleId: null, roleIds: [], channelId: null };
+// الرتب المسموحة للأمر (roleIds من الداشبورد + roleId القديم)
+const rolesOf = cfg => [...new Set([...(cfg.roleIds || []), ...(cfg.roleId ? [cfg.roleId] : [])])];
 
 const get = (g, name) => ({ ...DEF, ...(all(g)[name] || {}) });
 function set(g, name, patch) { const m = all(g); m[name] = { ...get(g, name), ...patch }; Pro.set(key(g), m); }
@@ -33,10 +36,12 @@ function find(client, g, word) {
 }
 
 function blockReason(guild, member, channel, name) {
+    if (member && (Pro.get("bot_blocked") || []).includes(member.id) && !owners.includes(member.id)) return "أنت محظور من استخدام البوت.";
     const cfg = get(guild.id, name);
     if (cfg.disabled) return "هذا الأمر معطّل.";
     if (!member || member.permissions.has("ADMINISTRATOR") || owners.includes(member.id)) return null;
-    if (cfg.roleId && !member.roles.cache.has(cfg.roleId)) return `هذا الأمر لأصحاب رتبة <@&${cfg.roleId}> فقط.`;
+    const need = rolesOf(cfg);
+    if (need.length && !need.some(r => member.roles.cache.has(r))) return `هذا الأمر لأصحاب ${need.length > 1 ? "رتب" : "رتبة"} ${need.map(r => `<@&${r}>`).join(" أو ")} فقط.`;
     if (cfg.channelId && channel.id !== cfg.channelId) return `استخدم هذا الأمر في <#${cfg.channelId}>.`;
     return null;
 }

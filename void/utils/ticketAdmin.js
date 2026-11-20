@@ -15,7 +15,7 @@ const MAX_IMAGE = 3 * 1024 * 1024;
 
 const DEFAULTS = guildId => ({
     guildId, panelChannelId: null, requestChannelId: null, ticketCategoryId: null,
-    reviewerRoleIds: [], categories: [], panelImagePath: null, requestImagePath: null,
+    reviewerRoleIds: [], transferRoleIds: [], categories: [], panelImagePath: null, requestImagePath: null,
     panelText: "", requestText: "", ticketText: "", acceptedText: "", pointText: ""
 });
 

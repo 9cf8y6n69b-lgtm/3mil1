@@ -43,6 +43,14 @@ function top(g, limit = 10) {
     return Object.entries(all).map(([id, r]) => ({ id, ...r, ...levelOf(r.xp || 0) })).sort((a, b) => b.xp - a.xp).slice(0, limit);
 }
 
+// ترتيب العضو في السيرفر (1 = الأول) وعدد الأعضاء اللي عندهم خبرة
+function rankOf(g, u) {
+    const all = Pro.get(usersKey(g)) || {};
+    const list = Object.entries(all).map(([id, r]) => [id, r.xp || 0]).sort((a, b) => b[1] - a[1]);
+    const i = list.findIndex(x => x[0] === u);
+    return { rank: i < 0 ? list.length + 1 : i + 1, total: Math.max(list.length, 1) };
+}
+
 async function applyRoleRewards(member, level) {
     const given = [];
     for (const r of getRoleRewards(member.guild.id).filter(x => x.level <= level).sort((a, b) => a.level - b.level)) {
@@ -55,29 +63,100 @@ async function applyRoleRewards(member, level) {
 
 let CV = null;
 try { CV = require("@napi-rs/canvas"); } catch {}
+const FONT = (w, size) => `${w} ${size}px CairoAr, CairoLat, sans-serif`;
+const nf = n => Number(n || 0).toLocaleString("en-US");
+const fmtMin = sec => { const m = Math.floor((sec || 0) / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+
+let _bg;
+async function loadBg() {
+    if (_bg !== undefined) return _bg;
+    for (const f of ["rank_bg.jpg", "banner.jpg"]) {
+        try { _bg = await CV.loadImage(path.join(__dirname, "..", "..", "assets", f)); return _bg; } catch {}
+    }
+    return (_bg = null);
+}
+function rr(x, X, Y, W, H, R) { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); }
+// خلفية الكرت: صورة الخلفية (سوداء/بيضاء) + طبقة تغميق
+async function drawBg(x, W, H, dark = 0.5) {
+    x.save(); rr(x, 0, 0, W, H, 28); x.clip();
+    x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, W, H);
+    const bg = await loadBg();
+    if (bg) { const k = Math.max(W / bg.width, H / bg.height), w = bg.width * k, h = bg.height * k; x.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h); }
+    x.fillStyle = `rgba(0,0,0,${dark})`; x.fillRect(0, 0, W, H);
+    x.restore();
+}
+async function drawAvatar(x, member, cx, cy, r) {
+    const av = await CV.loadImage(member.displayAvatarURL({ extension: "png", size: 256 })).catch(() => null);
+    x.save(); x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
+    if (av) x.drawImage(av, cx - r, cy - r, r * 2, r * 2); else { x.fillStyle = "#222"; x.fillRect(cx - r, cy - r, r * 2, r * 2); }
+    x.restore();
+    x.lineWidth = 5; x.strokeStyle = "#ffffff"; x.beginPath(); x.arc(cx, cy, r + 3, 0, Math.PI * 2); x.stroke();
+}
+function fit(x, text, font, maxW) { let t = String(text); x.font = font; while (t.length > 1 && x.measureText(t).width > maxW) t = t.slice(0, -1); return t === String(text) ? t : t + "…"; }
+
+// كرت الرانك: شريط XP + الاسم + الصورة + نقاط الفويس والشات + ترتيبه في السيرفر
+async function renderRankCard(member, u, pos) {
+    if (!CV) throw new Error("canvas غير متوفر");
+    const W = 1000, H = 330, c = CV.createCanvas(W, H), x = c.getContext("2d");
+    await drawBg(x, W, H, 0.55);
+    // لوح شفاف داخلي
+    rr(x, 16, 16, W - 32, H - 32, 22); x.fillStyle = "rgba(0,0,0,0.38)"; x.fill();
+    x.lineWidth = 2; x.strokeStyle = "rgba(255,255,255,0.35)"; x.stroke();
+
+    await drawAvatar(x, member, 130, 165, 82);
+
+    // الاسم
+    x.fillStyle = "#ffffff"; x.textAlign = "left"; x.textBaseline = "alphabetic";
+    const nameFont = FONT("700", 40);
+    x.font = nameFont; x.fillText(fit(x, member.displayName, nameFont, 430), 250, 90);
+
+    // الترتيب (يمين فوق) + اللفل
+    x.textAlign = "right";
+    x.font = FONT("700", 22); x.fillStyle = "rgba(255,255,255,0.7)"; x.fillText("TOP", 955, 60);
+    x.font = FONT("700", 58); x.fillStyle = "#ffffff"; x.fillText("#" + pos.rank, 955, 112);
+    x.textAlign = "left"; x.font = FONT("700", 24); x.fillStyle = "rgba(255,255,255,0.75)";
+    x.fillText(`LEVEL ${u.level}`, 250, 128);
+
+    // خانتين: شات وفويس
+    const box = (X, label, big, small) => {
+        rr(x, X, 148, 330, 66, 16); x.fillStyle = "rgba(255,255,255,0.12)"; x.fill();
+        x.lineWidth = 1.5; x.strokeStyle = "rgba(255,255,255,0.28)"; x.stroke();
+        x.textAlign = "right"; x.fillStyle = "rgba(255,255,255,0.8)"; x.font = FONT("700", 22); x.fillText(label, X + 314, 176);
+        x.textAlign = "left"; x.fillStyle = "#fff"; x.font = FONT("700", 30); x.fillText(big, X + 18, 187);
+        x.fillStyle = "rgba(255,255,255,0.65)"; x.font = FONT("700", 18); x.fillText(small, X + 18, 207);
+    };
+    box(250, "نقاط الشات", nf(u.chatXp) + " XP", nf(u.messages) + " msg");
+    box(600, "نقاط الفويس", nf(u.voiceXp) + " XP", fmtMin(u.voiceSeconds));
+
+    // شريط الخبرة
+    const BX = 250, BY = 245, BW = 700, BH = 36, pct = Math.max(0, Math.min(1, u.next ? u.into / u.next : 0));
+    x.textAlign = "right"; x.fillStyle = "#fff"; x.font = FONT("700", 20); x.fillText(`${nf(u.into)} / ${nf(u.next)} XP`, BX + BW, BY - 10);
+    x.textAlign = "left"; x.fillStyle = "rgba(255,255,255,0.7)"; x.fillText(`${Math.round(pct * 100)}%`, BX, BY - 10);
+    rr(x, BX, BY, BW, BH, BH / 2); x.fillStyle = "rgba(255,255,255,0.16)"; x.fill();
+    x.lineWidth = 2; x.strokeStyle = "rgba(255,255,255,0.4)"; x.stroke();
+    const fw = Math.max(BH, BW * pct);
+    if (pct > 0) {
+        x.save(); rr(x, BX, BY, BW, BH, BH / 2); x.clip();
+        const g = x.createLinearGradient(BX, 0, BX + fw, 0); g.addColorStop(0, "#8a8a8a"); g.addColorStop(1, "#ffffff");
+        rr(x, BX, BY, fw, BH, BH / 2); x.fillStyle = g; x.fill(); x.restore();
+    }
+    return c.toBuffer("image/png");
+}
+
 async function renderLevelUpCard(member, level, role) {
     if (!CV) throw new Error("canvas غير متوفر");
     const W = 900, H = 280, c = CV.createCanvas(W, H), x = c.getContext("2d");
-    x.fillStyle = "#0e0f11"; x.fillRect(0, 0, W, H);
-    try {
-        const bg = await CV.loadImage(path.join(__dirname, "..", "..", "assets", "banner.jpg"));
-        x.globalAlpha = 0.55; x.drawImage(bg, 0, 0, W, H); x.globalAlpha = 1;
-        x.fillStyle = "rgba(0,0,0,0.45)"; x.fillRect(0, 0, W, H);
-    } catch {}
-    const av = await CV.loadImage(member.displayAvatarURL({ extension: "png", size: 256 })).catch(() => null);
-    x.save(); x.beginPath(); x.arc(140, 140, 90, 0, Math.PI * 2); x.clip();
-    if (av) x.drawImage(av, 50, 50, 180, 180); x.restore();
-    x.lineWidth = 5; x.strokeStyle = "#ffffff"; x.beginPath(); x.arc(140, 140, 92, 0, Math.PI * 2); x.stroke();
+    await drawBg(x, W, H, 0.5);
+    await drawAvatar(x, member, 140, 140, 88);
     x.fillStyle = "#ffffff"; x.textAlign = "left";
-    x.font = "bold 34px Cairo, CairoLat, sans-serif"; x.fillText("LEVEL UP", 270, 85);
-    x.font = "bold 92px Cairo, CairoLat, sans-serif"; x.fillText(String(level), 270, 180);
-    x.font = "bold 28px Cairo, CairoAr, sans-serif";
-    x.fillText(String(member.displayName).slice(0, 28), 270, 225);
-    if (role) { x.fillStyle = "rgba(255,255,255,0.75)"; x.font = "22px Cairo, CairoAr, sans-serif"; x.fillText(`🏅 ${role.name}`.slice(0, 40), 270, 258); }
+    x.font = FONT("700", 34); x.fillText("LEVEL UP", 270, 85);
+    x.font = FONT("700", 92); x.fillText(String(level), 270, 180);
+    const nf2 = FONT("700", 28); x.font = nf2; x.fillText(fit(x, member.displayName, nf2, 560), 270, 225);
+    if (role) { x.fillStyle = "rgba(255,255,255,0.75)"; x.font = FONT("700", 22); x.fillText(String(role.name).slice(0, 40), 270, 258); }
     return c.toBuffer("image/png");
 }
 
 module.exports = {
     CHAT_XP, VOICE_XP_PER_MINUTE, need, levelOf, isEnabled, setEnabled, getLevelChannelId, setLevelChannel, getRoleRewards, setRoleRewards,
-    getUser, addXp, top, applyRoleRewards, renderLevelUpCard, getCfg
+    getUser, addXp, top, rankOf, applyRoleRewards, renderLevelUpCard, renderRankCard, getCfg
 };
