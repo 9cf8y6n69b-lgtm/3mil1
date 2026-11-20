@@ -4,7 +4,7 @@ const { spawn, spawnSync } = require('child_process');
 const { Transform } = require('stream');
 const banner = require('./banner');
 const { Soundcloud } = require('soundcloud.ts');
-const { getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType, NoSubscriberBehavior, generateDependencyReport } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType, NoSubscriberBehavior, generateDependencyReport } = require('@discordjs/voice');
 const {
   Client, GatewayIntentBits: I, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ChannelType, PermissionFlagsBits: P, SlashCommandBuilder, REST, Routes,
@@ -29,18 +29,13 @@ const def = {
   suggest: { enabled: false, channel: '', outChannel: '', dm: true, count: 0 },
   sugs: {},
   music: { volume: 60 },
-  afk: { enabled: false, channel: '' },
   logs: { channel: '', events: { msgDelete: true, msgEdit: true, join: true, leave: true, ban: true, roles: true, channels: true, member: true, voice: false } },
   tickets: { style: 'buttons', types: [], category: '', role: '', logChannel: '', dm: true, count: 0, welcome: 'أهلاً بيك! اكتب مشكلتك وهيرد عليك الفريق في أقرب وقت.' },
   warns: {}
 };
 let db = structuredClone(def);
 try { const s = JSON.parse(fs.readFileSync(DB, 'utf8')); for (const k in def) db[k] = { ...def[k], ...(s[k] || {}) }; } catch {}
-const save = () => {
-  if (global.__NOVA_RESTORING) return; // أثناء الاسترجاع ممنوع نكتب فوق النسخة المسترجعة
-  fs.writeFileSync(DB, JSON.stringify(db, null, 1));
-  try { require('./void/backup').notify('تعديل إعدادات البوت'); } catch {} // يرسل نسخة احتياطية للأونر
-};
+const save = () => { if (global.__restoring) return; fs.writeFileSync(DB, JSON.stringify(db, null, 1)); try { require('./void/backup').schedule('تعديل من الداشبورد'); } catch {} };
 
 // صور الهوية (assets/): بانر + خط فاصل + لوجو. تتعطل كلها لو حطيت NO_BRAND_IMAGES=1 في Environment
 const BRAND_ON = !process.env.NO_BRAND_IMAGES;
@@ -308,7 +303,6 @@ function stopAll() {
   M.queue = []; M.cur = null; M.res = null;
   const c = M.conn; M.conn = null; M.voice = null;
   M.player?.stop(true); try { c?.destroy(); } catch {}
-  setTimeout(() => afkEnsure().catch(() => {}), 1500); // يرجع لروم الـ AFK بعد ما تخلص الموسيقى
 }
 const mmss = ms => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
 const LOOP = { off: 'مقفول', track: 'الأغنية', queue: 'القايمة' };
@@ -427,37 +421,6 @@ function musicState() {
   const f = t => ({ title: t.title, author: t.author, dur: t.dur, art: t.art });
   return { node: !!FF, playing: !!M.cur, paused: M.player?.state.status === AudioPlayerStatus.Paused, volume: db.music.volume, loop: M.loop, pos: M.res?.playbackDuration || 0, cur: M.cur ? f(M.cur) : null, queue: M.queue.slice(0, 15).map(f) };
 }
-
-// ───── AFK: البوت يقعد دايم في روم صوتي محدد (من الداشبورد ← AFK) ─────
-const AFK = { busy: false };
-async function afkEnsure() {
-  if (AFK.busy) return; AFK.busy = true;
-  try {
-    const g = gld(); if (!g) return;
-    const cfg = db.afk, me = g.members.me, conn0 = getVoiceConnection(g.id);
-    if (!cfg.enabled || !cfg.channel) { if (AFK.joined && conn0 && !M.conn && !M.cur) conn0.destroy(); AFK.joined = false; return; }
-    if (M.conn || M.cur) return; // الموسيقى شغالة: ما نزاحمها
-    const ch = g.channels.cache.get(cfg.channel);
-    if (!ch || !ch.isVoiceBased()) return;
-    if (me?.voice?.channelId === ch.id && conn0 && conn0.state.status === VoiceConnectionStatus.Ready) return;
-    const p = ch.permissionsFor(me);
-    if (!p.has(P.ViewChannel) || !p.has(P.Connect)) { console.log('afk: البوت معندوش صلاحية Connect في الروم'); return; }
-    const conn = joinVoiceChannel({ channelId: ch.id, guildId: g.id, adapterCreator: g.voiceAdapterCreator, selfDeaf: true, selfMute: true });
-    try { await entersState(conn, VoiceConnectionStatus.Ready, 20000); }
-    catch { try { conn.destroy(); } catch {} console.log('afk: مقدرتش أدخل الروم'); return; }
-    AFK.joined = true;
-    if (!conn.__afk) {
-      conn.__afk = true;
-      conn.on(VoiceConnectionStatus.Disconnected, async () => {
-        try { await Promise.race([entersState(conn, VoiceConnectionStatus.Signalling, 5000), entersState(conn, VoiceConnectionStatus.Connecting, 5000)]); }
-        catch { try { conn.destroy(); } catch {} setTimeout(() => afkEnsure().catch(() => {}), 3000); }
-      });
-    }
-    if (ch.type === ChannelType.GuildStageVoice) await g.members.me.voice.setSuppressed(false).catch(() => {});
-  } catch (e) { console.log('afk:', e.message); }
-  finally { AFK.busy = false; }
-}
-client.on('voiceStateUpdate', (a, b) => { if (b.id === client.user?.id) setTimeout(() => afkEnsure().catch(() => {}), 2000); });
 
 async function openTicket(i, typeId) {
   const ty = (db.tickets.types || []).find(x => x.id === typeId);
@@ -642,6 +605,7 @@ const cmds = [
   mk('unlock', 'فتح الروم', P.ManageChannels),
   mk('slowmode', 'سلو مود', P.ManageChannels, c => N(c, 'seconds', 'الثواني (0 للإلغاء)', 0, 21600)),
   mk('say', 'البوت يكتب رسالة', P.ManageMessages, c => S(c, 'text', 'النص')),
+  mk('ticketpanel', 'إرسال بانل التذاكر', P.Administrator),
   mk('broadcast', 'برودكاست للخاص', P.Administrator, c => S(c, 'text', 'الرسالة')),
   mk('transcript', 'ترانسكربت للروم الحالي', P.ManageChannels),
   mk('play', 'تشغيل أغنية من SoundCloud', 0, c => S(c, 'query', 'الاسم أو الرابط')),
@@ -719,7 +683,7 @@ app.get('/api/state', h(async () => {
     guild: { name: g.name, icon: g.iconURL(), members: g.memberCount, channels: g.channels.cache.size, roles: g.roles.cache.size, ping: client.ws.ping },
     text: lst(g, ChannelType.GuildText), voice: lst(g, ChannelType.GuildVoice), emojis: g.emojis.cache.map(e => ({ id: e.id, name: e.name, animated: e.animated })), cats: lst(g, ChannelType.GuildCategory),
     roles: g.roles.cache.filter(r => r.id !== g.id && !r.managed).map(r => ({ id: r.id, name: r.name })),
-    db: { protection: db.protection, tickets: db.tickets, admin: db.admin, logs: db.logs, welcome: db.welcome, feedback: db.feedback, suggest: db.suggest, afk: db.afk }, bc
+    db: { protection: db.protection, tickets: db.tickets, admin: db.admin, logs: db.logs, welcome: db.welcome, feedback: db.feedback, suggest: db.suggest }, bc
   };
 }));
 app.get('/api/preview/:kind', async (q, r) => {
@@ -740,10 +704,7 @@ app.get('/api/logs', h(async () => feed));
 app.get('/api/bc', h(async () => bc));
 app.post('/api/config', h(async b => {
   if (b.section === 'tickets' && b.data.types) b.data.types = b.data.types.slice(0, 25).map(x => ({ id: String(x.id).replace(/\W/g, '').slice(0, 20) || 'x' + Math.random().toString(36).slice(2, 8), label: String(x.label || '').slice(0, 80), emoji: String(x.emoji || '').slice(0, 60), desc: String(x.desc || '').slice(0, 100) }));
-  if (!db[b.section] || b.section === 'warns' || b.section === 'sugs') throw new Error('قسم غلط');
-  if (b.section === 'afk') { const c = String(b.data.channel || ''); b.data = { enabled: !!b.data.enabled, channel: /^\d{15,25}$/.test(c) && gld()?.channels.cache.get(c)?.isVoiceBased() ? c : '' }; }
-  db[b.section] = { ...db[b.section], ...b.data }; save();
-  if (b.section === 'afk') setTimeout(() => afkEnsure().catch(() => {}), 300); }));
+  if (!db[b.section] || b.section === 'warns' || b.section === 'sugs') throw new Error('قسم غلط'); db[b.section] = { ...db[b.section], ...b.data }; save(); }));
 app.post('/api/send', h(async b => { const ch = gld().channels.cache.get(b.channel); if (!ch) throw new Error('اختار روم'); await ch.send(build(b)); }));
 app.post('/api/broadcast', h(b => broadcast(b)));
 app.get('/api/songs', h(async () => ({ songs: listSongs().map(x => ({ name: x.name })) })));
@@ -771,7 +732,6 @@ dashApi.mount(app, { client, gld, db, save, h });
 client.once('clientReady', async () => {
   console.log('البوت شغال:', client.user.tag);
   setupEmojis().catch(e => console.log('emojis:', e.message));
-  setTimeout(() => afkEnsure().catch(() => {}), 5000); setInterval(() => afkEnsure().catch(() => {}), 30000);
   await new REST().setToken(process.env.TOKEN).put(Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID), { body: cmds });
 });
 client.login(process.env.TOKEN);
