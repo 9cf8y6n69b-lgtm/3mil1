@@ -69,6 +69,7 @@ function mount(app, { client, gld, db, save, h }) {
     app.post("/api/v/tickets", h(async b => {
         const g = need(), cur = TA.load(g.id);
         const roles = (b.reviewerRoleIds || []).filter(r => g.roles.cache.has(r)).slice(0, 15);
+        const transferRoles = [...new Set((b.transferRoleIds || []).filter(r => g.roles.cache.has(r)))].slice(0, 25); // الرتب اللي يتحول لها التكت
         const cats = (b.categories || []).slice(0, 24).map(x => ({
             id: String(x.id || "").replace(/\W/g, "").slice(0, 20) || "c" + Math.random().toString(36).slice(2, 8),
             name: String(x.name || "").trim().slice(0, 80), description: String(x.description || "").slice(0, 100),
@@ -77,7 +78,7 @@ function mount(app, { client, gld, db, save, h }) {
         for (const k of ["panelChannelId", "requestChannelId", "ticketCategoryId"]) if (b[k] !== undefined && !chOk(g, b[k])) throw new Error("روم أو كاتيغوري غلط");
         const txt = k => String(b[k] ?? cur[k] ?? "").slice(0, 1500);
         TA.save(g.id, {
-            ...cur, reviewerRoleIds: roles, categories: cats,
+            ...cur, reviewerRoleIds: roles, transferRoleIds: transferRoles, categories: cats,
             panelChannelId: b.panelChannelId || null, requestChannelId: b.requestChannelId || null, ticketCategoryId: b.ticketCategoryId || null,
             panelText: txt("panelText"), requestText: txt("requestText"), ticketText: txt("ticketText"), acceptedText: txt("acceptedText"), pointText: txt("pointText")
         });
@@ -139,7 +140,7 @@ function mount(app, { client, gld, db, save, h }) {
         const g = need();
         if (!client.commands.has(b.name)) throw new Error("أمر غلط");
         const aliases = [...new Set((b.aliases || []).map(a => String(a).toLowerCase().trim()).filter(a => a && a.length <= 30 && !/\s/.test(a) && !CC.taken(client, g.id, a, b.name)))].slice(0, 10);
-        CC.set(g.id, b.name, { disabled: !!b.disabled, aliases, roleId: b.roleId && g.roles.cache.has(b.roleId) ? b.roleId : null, channelId: b.channelId && chOk(g, b.channelId) ? b.channelId : null });
+        CC.set(g.id, b.name, { disabled: !!b.disabled, aliases, roleId: null, roleIds: [...new Set((b.roleIds || []).filter(r => g.roles.cache.has(r)))].slice(0, 25), channelId: b.channelId && chOk(g, b.channelId) ? b.channelId : null });
     }));
     app.post("/api/v/shortcut", h(async b => {
         const g = need(), word = String(b.word || "").toLowerCase().trim();

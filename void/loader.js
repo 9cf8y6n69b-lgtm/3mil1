@@ -2,6 +2,7 @@
 const fs = require("fs"), path = require("path");
 const { Collection } = require("discord.js");
 
+const DESC = require("./utils/cmdDescriptions");
 const OPT_TYPES = { SUB_COMMAND: 1, SUB_COMMAND_GROUP: 2, STRING: 3, INTEGER: 4, BOOLEAN: 5, USER: 6, CHANNEL: 7, ROLE: 8, MENTIONABLE: 9, NUMBER: 10, ATTACHMENT: 11 };
 const fixOpt = o => {
     const x = { ...o };
@@ -12,10 +13,10 @@ const fixOpt = o => {
 };
 
 // أوامر تنسجل كسلاش (الباقي يشتغل بالاسم بدون بادئة أو بـ ! )
-const SLASH = { ticket: true, filters: true, log: true, help: false };
+const SLASH = { ticket: true, filters: true, log: true, backup: true, restore: true, help: false };
 const ADMIN_ONLY = "8"; // Administrator
 
-const EVENTS = ["logSystem", "logPanel", "ticketInteractions", "ticketAdmin", "helpInteractions", "filters", "xp", "messageCreate"];
+const EVENTS = ["logSystem", "logPanel", "ticketInteractions", "ticketAdmin", "helpInteractions", "filters", "xp", "features", "protection", "messageCreate"];
 const OWN_ID = /^(help$|tk[:_]|tkc[:_]|lg_|lgp:|hp_|pr_|flt:)/;
 
 function loadCommands(client) {
@@ -25,11 +26,14 @@ function loadCommands(client) {
         if (!fs.statSync(full).isDirectory()) continue;
         for (const file of fs.readdirSync(full).filter(f => f.endsWith(".js"))) {
             try {
-                const cmd = require(path.join(full, file));
-                if (!cmd || !cmd.name) continue;
-                cmd.directory = dir;
-                client.commands.set(cmd.name, cmd);
-                if (cmd.name in SLASH) client.slashCommands.set(cmd.name, cmd);
+                const mod = require(path.join(full, file));
+                for (const cmd of (Array.isArray(mod) ? mod : [mod])) {
+                    if (!cmd || !cmd.name) continue;
+                    cmd.directory = cmd.directory || dir;
+                    cmd.description = cmd.description || DESC[cmd.name];
+                    client.commands.set(cmd.name, cmd);
+                    if (cmd.name in SLASH) client.slashCommands.set(cmd.name, cmd);
+                }
             } catch (e) { console.error(`[void] فشل تحميل الأمر ${dir}/${file}:`, e.message); }
         }
     }
@@ -50,6 +54,7 @@ function init(client) {
     client.commands = new Collection();
     client.slashCommands = new Collection();
     loadCommands(client);
+    try { require("./backup").init(client); } catch (e) { console.error("[void] backup:", e.message); } // نسخ احتياطي واسترجاع
 
     for (const ev of EVENTS) {
         try { require(`./events/${ev}`); } catch (e) { console.error(`[void] فشل تحميل الحدث ${ev}:`, e); }
