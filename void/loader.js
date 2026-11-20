@@ -13,7 +13,7 @@ const fixOpt = o => {
 };
 
 // أوامر تنسجل كسلاش (الباقي يشتغل بالاسم بدون بادئة أو بـ ! )
-const SLASH = { ticket: true, filters: true, log: true, backup: true, restore: true, help: false };
+const SLASH = { ticket: true, filters: true, log: true, help: false };
 const ADMIN_ONLY = "8"; // Administrator
 
 const EVENTS = ["logSystem", "logPanel", "ticketInteractions", "ticketAdmin", "helpInteractions", "filters", "xp", "features", "protection", "messageCreate"];
@@ -54,7 +54,6 @@ function init(client) {
     client.commands = new Collection();
     client.slashCommands = new Collection();
     loadCommands(client);
-    try { require("./backup").init(client); } catch (e) { console.error("[void] backup:", e.message); } // نسخ احتياطي واسترجاع
 
     for (const ev of EVENTS) {
         try { require(`./events/${ev}`); } catch (e) { console.error(`[void] فشل تحميل الحدث ${ev}:`, e); }
@@ -92,6 +91,7 @@ function init(client) {
         }
     });
 
+    require("./backup").init(client);
     client.once("ready", () => {
         try { require("./utils/ticketAdmin").restoreImages(client); } catch (e) { console.error("[void] restoreImages:", e.message); }
     });

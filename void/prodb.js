@@ -2,16 +2,17 @@
 const fs = require("fs"), path = require("path");
 const DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 const FILE = path.join(DIR, "prodb.json");
-let data = {}, timer = null, listeners = [], changeL = [];
+let data = {}, timer = null, listeners = [], frozen = false;
+const dirty = new Set();
 try { fs.mkdirSync(DIR, { recursive: true }); data = JSON.parse(fs.readFileSync(FILE, "utf8")); } catch {}
 
 const flush = () => {
     timer = null;
-    if (global.__NOVA_RESTORING) return; // أثناء استرجاع نسخة: ممنوع نكتب فوق الملفات المسترجعة
+    if (frozen) return;
     try { fs.writeFileSync(FILE + ".tmp", JSON.stringify(data)); fs.renameSync(FILE + ".tmp", FILE); } catch (e) { console.error("[prodb] save:", e.message); }
-    listeners.forEach(f => { try { f(data); } catch {} });
+    const d = new Set(dirty); dirty.clear(); listeners.forEach(f => { try { f(data, d); } catch {} });
 };
-const touch = k => { if (!timer) timer = setTimeout(flush, 400); if (k !== undefined) changeL.forEach(f => { try { f(k); } catch {} }); };
+const touch = k => { if (k !== undefined) dirty.add(k); if (!timer && !frozen) timer = setTimeout(flush, 400); };
 const clone = v => (v && typeof v === "object" ? JSON.parse(JSON.stringify(v)) : v);
 
 const api = {
@@ -28,9 +29,9 @@ const api = {
     _dump: () => data,
     _load: obj => { data = obj && typeof obj === "object" ? obj : {}; },
     _onSave: f => listeners.push(f),
-    _onChange: f => changeL.push(f), // يتنادى باسم المفتاح عند أي تعديل (للنسخ الاحتياطي)
-    _paths: { dir: DIR, file: FILE },
-    _flush: flush
+    _flush: flush,
+    _freeze: () => { frozen = true; clearTimeout(timer); timer = null; },
+    FILE
 };
 process.on("SIGTERM", () => { try { flush(); } catch {} });
 module.exports = api;

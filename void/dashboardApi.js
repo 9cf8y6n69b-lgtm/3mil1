@@ -32,6 +32,17 @@ function mount(app, { client, gld, db, save, h }) {
     const need = () => { const g = gld(); if (!g) throw new Error("البوت مش موجود في السيرفر — اتأكد من GUILD_ID"); return g; };
     const chOk = (g, id) => id === null || id === "" || (idOk(id) && g.channels.cache.has(id));
 
+
+    // ───────────── النسخ الاحتياطي ─────────────
+    const express = require("express"), BK = require("./backup");
+    app.get("/api/backup/info", h(async () => ({ to: BK.BACKUP_ID })));
+    app.post("/api/backup/send", h(async () => { const r = await BK.send(client, "طلب من الداشبورد"); return { to: r.to, size: r.size, dataOnly: r.dataOnly }; }));
+    app.get("/api/backup/download", (q, r) => { try { const { buf, meta } = BK.build("تنزيل من الداشبورد"); r.setHeader("Content-Type", "application/zip"); r.setHeader("Content-Disposition", `attachment; filename="NovaSTORE-backup-${meta.at.replace(/[:T]/g, "-").slice(0, 19)}.zip"`); r.send(buf); } catch (e) { r.status(400).json({ error: e.message }); } });
+    app.post("/api/backup/restore", express.raw({ type: "*/*", limit: "30mb" }), h(async (b, q) => {
+        if (!Buffer.isBuffer(b) || b.length < 100) throw new Error("ملف فاضي");
+        const r = BK.restore(b, { dataOnly: q.query.dataOnly === "1" }); BK.restartSoon(); return { files: r.files, at: r.at, dataOnly: r.dataOnly };
+    }));
+
     // ───────────── تصميم البنر ─────────────
     const kinds = ["welcome", "feedback"];
     const kind = q => { if (!kinds.includes(q.params.kind)) throw new Error("نوع غلط"); return q.params.kind; };
@@ -69,7 +80,6 @@ function mount(app, { client, gld, db, save, h }) {
     app.post("/api/v/tickets", h(async b => {
         const g = need(), cur = TA.load(g.id);
         const roles = (b.reviewerRoleIds || []).filter(r => g.roles.cache.has(r)).slice(0, 15);
-        const transferRoles = [...new Set((b.transferRoleIds || []).filter(r => g.roles.cache.has(r)))].slice(0, 25); // الرتب اللي يتحول لها التكت
         const cats = (b.categories || []).slice(0, 24).map(x => ({
             id: String(x.id || "").replace(/\W/g, "").slice(0, 20) || "c" + Math.random().toString(36).slice(2, 8),
             name: String(x.name || "").trim().slice(0, 80), description: String(x.description || "").slice(0, 100),
@@ -78,7 +88,7 @@ function mount(app, { client, gld, db, save, h }) {
         for (const k of ["panelChannelId", "requestChannelId", "ticketCategoryId"]) if (b[k] !== undefined && !chOk(g, b[k])) throw new Error("روم أو كاتيغوري غلط");
         const txt = k => String(b[k] ?? cur[k] ?? "").slice(0, 1500);
         TA.save(g.id, {
-            ...cur, reviewerRoleIds: roles, transferRoleIds: transferRoles, categories: cats,
+            ...cur, reviewerRoleIds: roles, categories: cats,
             panelChannelId: b.panelChannelId || null, requestChannelId: b.requestChannelId || null, ticketCategoryId: b.ticketCategoryId || null,
             panelText: txt("panelText"), requestText: txt("requestText"), ticketText: txt("ticketText"), acceptedText: txt("acceptedText"), pointText: txt("pointText")
         });
@@ -140,7 +150,7 @@ function mount(app, { client, gld, db, save, h }) {
         const g = need();
         if (!client.commands.has(b.name)) throw new Error("أمر غلط");
         const aliases = [...new Set((b.aliases || []).map(a => String(a).toLowerCase().trim()).filter(a => a && a.length <= 30 && !/\s/.test(a) && !CC.taken(client, g.id, a, b.name)))].slice(0, 10);
-        CC.set(g.id, b.name, { disabled: !!b.disabled, aliases, roleId: null, roleIds: [...new Set((b.roleIds || []).filter(r => g.roles.cache.has(r)))].slice(0, 25), channelId: b.channelId && chOk(g, b.channelId) ? b.channelId : null });
+        CC.set(g.id, b.name, { disabled: !!b.disabled, aliases, roleId: b.roleId && g.roles.cache.has(b.roleId) ? b.roleId : null, channelId: b.channelId && chOk(g, b.channelId) ? b.channelId : null });
     }));
     app.post("/api/v/shortcut", h(async b => {
         const g = need(), word = String(b.word || "").toLowerCase().trim();
