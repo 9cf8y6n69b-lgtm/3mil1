@@ -7,7 +7,10 @@ const {
     MessageActionRow,
     MessageButton,
     MessageSelectMenu,
-    MessageEmbed
+    MessageEmbed,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require("../compat");
 
 const TS = require("../utils/ticketSystem");
@@ -145,6 +148,21 @@ function isHandler(member, config, ticket) {
 // ───────────── جهات التحويل ─────────────
 function getTransferTargets(config, guildId) {
     const saved = Pro.get(TRANSFERS_KEY(guildId)) || [];
+
+    // الرتب اللي اختارها الأدمن من الداشبورد (التكت > رتب التحويل): كل رتبة = جهة تحويل
+    const guild = client.guilds.cache.get(guildId);
+    const fromRoles = (config.transferRoleIds || [])
+        .map(id => guild && guild.roles.cache.get(id))
+        .filter(Boolean)
+        .map(role => ({
+            id: role.id,
+            name: role.name,
+            description: `تحويل التكت إلى ${role.name}`,
+            roleIds: [role.id],
+            type: "role"
+        }));
+
+    if (fromRoles.length) return [...fromRoles, ...saved.filter(item => !fromRoles.some(r => r.id === item.id))];
 
     const fromCategories = (config.categories || [])
         .filter(category => category.roleId)
@@ -789,7 +807,7 @@ async function showTransferMenu(interaction, config) {
     const targets = getTransferTargets(config, guild.id).slice(0, 100);
 
     if (!targets.length) {
-        return reply(interaction, "ما فيه جهات تحويل. أضفها بأمر `تحويلات` أو اربط رتبة بالأقسام.");
+        return reply(interaction, "ما فيه رتب تحويل. اختارها من الداشبورد: التكت المتقدم ← رتب التحويل.");
     }
 
     // جهة وحدة فقط = تحويل مباشر بدون سؤال
@@ -1271,25 +1289,50 @@ async function toggleLock(interaction, config) {
     }).catch(() => {});
 }
 
+// زر "تسمية": يفتح نافذة كتابة الاسم (أسهل من الكتابة بالشات خصوصا بالجوال)
 async function renameTicket(interaction, config) {
-    const guild = interaction.guild;
     const ticket = await ticketGuard(interaction, config);
     if (!ticket) return;
 
+    const input = new TextInputBuilder()
+        .setCustomId("name")
+        .setLabel("الاسم الجديد للتكت")
+        .setStyle(TextInputStyle.Short)
+        .setMinLength(1)
+        .setMaxLength(80)
+        .setRequired(true)
+        .setValue(String(interaction.channel.name).slice(0, 80));
+
+    return interaction.showModal(
+        new ModalBuilder().setCustomId("tk:renamem").setTitle("تعديل اسم التكت").addComponents(new MessageActionRow().addComponents(input))
+    ).catch(() => {});
+}
+
+async function applyRename(interaction, config) {
+    const guild = interaction.guild;
+    const ticket = getTicket(interaction.channel.id);
+
+    if (!ticket || ticket.status !== "accepted") return reply(interaction, "هذا التكت غير موجود أو مغلق.");
+    if (!isHandler(interaction.member, config, ticket)) return reply(interaction, "هذا الزر للإدارة المسؤولة عن التكت فقط.");
+
+    const name = interaction.fields.getTextInputValue("name").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    if (!name) return reply(interaction, "اسم غير صالح.");
+
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
 
-    const got = await askInTicket(interaction, `${ico(guild, "rename")} اكتب الاسم الجديد للتكت:`);
-    if (!got) return;
+    // ديسكورد يسمح بتغيير اسم الروم مرتين كل 10 دقايق؛ ما نخلي الطلب يعلّق
+    const done = await Promise.race([
+        interaction.channel.setName(name, `تسمية التكت بواسطة ${interaction.user.tag}`).then(() => true).catch(() => false),
+        new Promise(resolve => setTimeout(() => resolve(null), 10000))
+    ]);
 
-    const name = got.content.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-    if (!name) return interaction.followUp({ embeds: [E("اسم غير صالح.", COLORS.rejected)], ephemeral: true }).catch(() => {});
+    const text = done === true
+        ? `${ico(guild, "accept")} صار اسم التكت **${name}**`
+        : done === null
+            ? "ديسكورد يسمح بتغيير اسم الروم مرتين كل 10 دقايق، بيتغير الاسم أوتوماتيك أول ما يسمح."
+            : "ما قدرت أغير الاسم (تأكد من صلاحية Manage Channels للبوت).";
 
-    const ok = await interaction.channel.setName(name).then(() => true).catch(() => false);
-
-    return interaction.followUp({
-        embeds: [E(ok ? `${ico(guild, "accept")} صار اسم التكت **${name}**` : "ما قدرت أغير الاسم (ديسكورد يسمح مرتين كل 10 دقايق).", ok ? COLORS.accepted : COLORS.rejected)],
-        ephemeral: true
-    }).catch(() => {});
+    return interaction.editReply({ embeds: [E(text, done === false ? COLORS.rejected : COLORS.accepted)] }).catch(() => {});
 }
 
 // نسخة نصية من المحادثة (تجيك سري)
@@ -1346,6 +1389,11 @@ client.on("interactionCreate", async interaction => {
 
         const parts = String(id).split(":");
         const action = parts[1];
+
+        if (typeof interaction.isModalSubmit === "function" && interaction.isModalSubmit()) {
+            if (action === "renamem") return await applyRename(interaction, config);
+            return;
+        }
 
         if (isSelect(interaction)) {
             if (action === "open") return await openRequest(interaction, config);

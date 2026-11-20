@@ -83,7 +83,12 @@ async function sendLog(guild, key, data = {}) {
     const t = TYPE_MAP[key];
     if (!ch || !t) return;
 
-    if (!data.file && (AUTO_CARD.has(key) || key.startsWith("cmd")) && ch.permissionsFor(guild.me).has("ATTACH_FILES")) {
+    // الصور (كروت + صورة العضو) للوقات الفويس فقط؛ باقي اللوقات نص/إمبد بدون صور
+    // (استثناء: "حذف صورة" لأن الصورة المحذوفة هي محتوى اللوق نفسه)
+    const visual = key.startsWith("voice");
+    if (!visual) data = { ...data, file: null, image: key === "imageDelete" ? data.image : null };
+
+    if (visual && !data.file && (AUTO_CARD.has(key) || key.startsWith("cmd")) && ch.permissionsFor(guild.me).has("ATTACH_FILES")) {
         data = { ...data, file: await autoCard(guild, key, data) };
     }
 
@@ -93,7 +98,7 @@ async function sendLog(guild, key, data = {}) {
         .filter((f) => f && f.value)
         .map((f) => ({ name: f.name, value: short(f.value, 1000) || "—", inline: f.inline !== false }));
     if (fields.length) embed.addFields(fields.slice(0, 25));
-    if (data.user) embed.setThumbnail(data.user.displayAvatarURL({ dynamic: true }));
+    if (data.user && visual) embed.setThumbnail(data.user.displayAvatarURL({ dynamic: true }));
     const files = [];
     if (data.file && ch.permissionsFor(guild.me).has("ATTACH_FILES")) {
         files.push({ attachment: data.file, name: "void-log.png" });
