@@ -9,7 +9,7 @@ const E = (t, c = "#2b2d31") => new MessageEmbed().setColor(c).setDescription(t)
 
 module.exports = {
     name: "shortcut",
-    aliases: ["اختصار", "اختصارات"],
+    aliases: ["اختصار", "اختصارات", "cut", "chat-cuts"],
     description: "اختصار أي أمر بالكامل مع وسائطه",
 
     run: async (client, message, args = []) => {
